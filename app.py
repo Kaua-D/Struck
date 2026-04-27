@@ -1,5 +1,6 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, Response
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_super_segura' # Necessário para flash messages
@@ -89,6 +90,36 @@ def fechar(id):
     conn.close()
     flash('Comanda fechada com sucesso!', 'success')
     return redirect(url_for('index'))
+
+@app.route('/exportar_xml')
+def exportar_xml():
+    conn = get_db_connection()
+    comandas = conn.execute('SELECT * FROM comanda').fetchall()
+    conn.close()
+
+    root = ET.Element("comandas")
+    for row in comandas:
+        comanda_elem = ET.SubElement(root, "comanda")
+        for key in row.keys():
+            child = ET.SubElement(comanda_elem, key)
+            child.text = str(row[key]) if row[key] is not None else ""
+
+        # Logica de cores
+        ativa = row['ativa']
+        couvert_lancado = row['couvert_lancado']
+
+        cor = None
+        if ativa == 0:
+            cor = "verde"
+        elif ativa == 1 and couvert_lancado == 1:
+            cor = "amarelo"
+
+        if cor:
+            cor_elem = ET.SubElement(comanda_elem, "cor")
+            cor_elem.text = cor
+
+    xml_str = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding='utf-8', method='xml')
+    return Response(xml_str, mimetype='application/xml', headers={'Content-Disposition': 'attachment;filename=comandas.xml'})
 
 if __name__ == '__main__':
     init_db()
