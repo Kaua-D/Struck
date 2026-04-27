@@ -89,6 +89,9 @@
             background: #e9e5dc; 
             border: 1px solid #d4d0c8; 
             border-radius: 5px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .flash-messages { margin-bottom: 20px; }
@@ -150,13 +153,16 @@
         
         <!-- Barra de Pesquisa MOVIDA para baixo do formulário -->
         <div class="search-bar">
-            <form action="/" method="GET" style="display: flex; gap: 10px;">
-                <input type="text" name="busca" placeholder="Pesquisar número da comanda..." value="{{ request.args.get('busca', '') }}">
+            <form action="/" method="GET" style="display: flex; gap: 10px; flex: 1;">
+                <input type="text" name="busca" placeholder="Pesquisar número da comanda..." value="{{ request.args.get('busca', '') }}" style="max-width: 300px;">
                 <button type="submit" style="background-color: var(--primary-gold); color: white;">Buscar</button>
                 {% if request.args.get('busca') %}
                 <a href="/"><button type="button" style="background-color: #999; color: white;">Limpar</button></a>
                 {% endif %}
             </form>
+            <a href="/exportar" style="text-decoration: none;">
+                <button type="button" style="background-color: var(--dark-green); color: white;">Exportar Comandas (Excel)</button>
+            </a>
         </div>
 
         <div class="cols" style="text-align: left;">

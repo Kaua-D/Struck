@@ -103,5 +103,47 @@ class RestauranteTestCase(unittest.TestCase):
         self.assertIn(b'Comanda: 20', rv.data)
         self.assertNotIn(b'Comanda: 10', rv.data)
 
+    def test_exportar_comandas(self):
+        import openpyxl
+        import io
+
+        # 1. Add comanda and close it (verde)
+        self.app.post('/adicionar', data=dict(nome='Fechada', telefone='1', numero_comanda='200', qtd_pessoas='1'))
+        self.app.post('/fechar/1', follow_redirects=True)
+
+        # 2. Add comanda, launch couvert, and leave open (amarelo)
+        self.app.post('/adicionar', data=dict(nome='Com Couvert', telefone='2', numero_comanda='201', qtd_pessoas='1'))
+        self.app.post('/lancar_couvert/2', follow_redirects=True)
+
+        # 3. Add comanda, leave open, no couvert (branco)
+        self.app.post('/adicionar', data=dict(nome='Aberta Sem Couvert', telefone='3', numero_comanda='202', qtd_pessoas='1'))
+
+        # Exportar
+        rv = self.app.get('/exportar')
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.mimetype, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+        # Load excel file
+        excel_data = io.BytesIO(rv.data)
+        wb = openpyxl.load_workbook(excel_data)
+        ws = wb.active
+
+        self.assertEqual(ws.title, "Comandas")
+
+        # Check rows (row 1 is header)
+        rows = list(ws.iter_rows())
+        self.assertTrue(len(rows) >= 4) # 1 header + 3 comandas
+
+        # Verifying row colors
+        # Row 2 (ID 1, Fechada -> Verde)
+        self.assertEqual(rows[1][0].fill.start_color.index, '0000FF00')
+
+        # Row 3 (ID 2, Open with Couvert -> Amarelo)
+        self.assertEqual(rows[2][0].fill.start_color.index, '00FFFF00')
+
+        # Row 4 (ID 3, Open without Couvert -> Branco)
+        self.assertEqual(rows[3][0].fill.start_color.index, '00FFFFFF')
+
+
 if __name__ == '__main__':
     unittest.main()
