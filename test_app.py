@@ -103,5 +103,50 @@ class RestauranteTestCase(unittest.TestCase):
         self.assertIn(b'Comanda: 20', rv.data)
         self.assertNotIn(b'Comanda: 10', rv.data)
 
+    def test_exportar_xml(self):
+        # Comanda aberta sem couvert
+        self.app.post('/adicionar', data=dict(
+            nome='Aberto Sem Couvert', telefone='1', numero_comanda='1001', qtd_pessoas='1'
+        ), follow_redirects=True)
+
+        # Comanda aberta com couvert (lançar couvert para ID=2, assumindo IDs sequenciais)
+        self.app.post('/adicionar', data=dict(
+            nome='Aberto Com Couvert', telefone='2', numero_comanda='1002', qtd_pessoas='1'
+        ), follow_redirects=True)
+        self.app.post('/lancar_couvert/2', follow_redirects=True)
+
+        # Comanda fechada
+        self.app.post('/adicionar', data=dict(
+            nome='Fechada', telefone='3', numero_comanda='1003', qtd_pessoas='1'
+        ), follow_redirects=True)
+        self.app.post('/fechar/3', follow_redirects=True)
+
+        rv = self.app.get('/exportar_xml')
+        self.assertEqual(rv.status_code, 200)
+        self.assertTrue(rv.content_type.startswith('application/xml'))
+
+        xml_data = rv.data.decode('utf-8')
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(xml_data)
+
+        comandas = root.findall('comanda')
+        self.assertEqual(len(comandas), 3)
+
+        # Verificando as cores de cada comanda
+        cores = []
+        for comanda in comandas:
+            cor_elem = comanda.find('cor')
+            if cor_elem is not None:
+                cores.append(cor_elem.text)
+            else:
+                cores.append(None)
+
+        # O 1001 deve ser None (sem tag cor de acordo com a logica original se nao preencher)
+        # 1002 deve ser amarelo
+        # 1003 deve ser verde
+        self.assertEqual(cores[0], None)
+        self.assertEqual(cores[1], "amarelo")
+        self.assertEqual(cores[2], "verde")
+
 if __name__ == '__main__':
     unittest.main()
