@@ -1,5 +1,8 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, flash
+import io
+import openpyxl
+from openpyxl.styles import PatternFill
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_super_segura' # Necessário para flash messages
@@ -89,6 +92,61 @@ def fechar(id):
     conn.close()
     flash('Comanda fechada com sucesso!', 'success')
     return redirect(url_for('index'))
+
+@app.route('/exportar', methods=['GET'])
+def exportar():
+    conn = get_db_connection()
+    comandas = conn.execute('SELECT * FROM comanda').fetchall()
+    conn.close()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Comandas"
+
+    headers = ["ID", "Nome", "Telefone", "Número Comanda", "Qtd Pessoas", "Couvert", "Status", "Criada em"]
+    ws.append(headers)
+
+    green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+
+    for i, comanda in enumerate(comandas, start=2): # Start from row 2 (row 1 is headers)
+        row = [
+            comanda['id'],
+            comanda['nome'],
+            comanda['telefone'],
+            comanda['numero_comanda'],
+            comanda['qtd_pessoas'],
+            "Sim" if comanda['couvert_lancado'] else "Não",
+            "Ativa" if comanda['ativa'] else "Fechada",
+            comanda['created_at']
+        ]
+        ws.append(row)
+
+        ativa = comanda['ativa']
+        couvert_lancado = comanda['couvert_lancado']
+
+        fill_color = white_fill
+        if ativa == 0:
+            fill_color = green_fill
+        elif ativa == 1 and couvert_lancado == 1:
+            fill_color = yellow_fill
+        else:
+            fill_color = white_fill
+
+        for col_num in range(1, len(headers) + 1):
+            ws.cell(row=i, column=col_num).fill = fill_color
+
+    excel_file = io.BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+
+    return send_file(
+        excel_file,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='comandas.xlsx'
+    )
 
 if __name__ == '__main__':
     init_db()
