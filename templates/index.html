@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Comandas - Struck Bier</title>
+    <style>
+        /* Paleta de Cores Struck Bier (Aproximada) */
+        :root {
+            --primary-gold: #cead5e;
+            --secondary-gold: #a57536;
+            --dark-green: #2c8536; /* Usado para ações de sucesso/confirmação */
+            --dark-bg: #1a1a1a;
+            --light-bg: #f4f1ea; /* Bege claro simula o fundo do site */
+            --text-color: #333;
+            --text-light: #fff;
+            --danger-red: #d9534f;
+        }
+
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            padding: 20px; 
+            background-color: var(--light-bg);
+            color: var(--text-color);
+        }
+        
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        h1, h2 { 
+            color: #000; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        
+        h1 { text-align: center; margin-bottom: 40px; border-bottom: 2px solid var(--primary-gold); display: inline-block; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { 
+            width: 100%; 
+            padding: 10px; 
+            box-sizing: border-box; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        
+        button { 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 4px; 
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: opacity 0.3s;
+        }
+        button:hover { opacity: 0.9; }
+        
+        .cols { display: flex; gap: 30px; margin-top: 40px; }
+        
+        .col { 
+            flex: 1; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-top: 4px solid var(--primary-gold);
+        }
+        
+        .item { 
+            border-bottom: 1px solid #eee; 
+            padding: 15px 0; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .item:last-child { border-bottom: none; }
+        
+        .item-info { flex: 1; }
+        
+        .btn-couvert { background-color: var(--primary-gold); color: var(--text-light); }
+        .btn-close { background-color: var(--danger-red); color: var(--text-light); margin-left: 10px; }
+        .btn-add { background-color: var(--secondary-gold); color: var(--text-light); width: 100%; font-size: 1.1em; }
+        
+        /* Search Bar Styles */
+        .search-bar { 
+            margin-top: 20px; /* Movido para baixo do form principal */
+            padding: 15px; 
+            background: #e9e5dc; 
+            border: 1px solid #d4d0c8; 
+            border-radius: 5px; 
+        }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 10px; border-left: 5px solid transparent; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border-left-color: #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border-left-color: #c3e6cb; }
+        
+        .status-ok { color: var(--dark-green); font-weight: bold; display: block; margin-top: 5px;}
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .cols { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="text-align: center;">
+        <h1>Gestão de Comandas</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages" style="text-align: left;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Coluna Única Centralizada para Nova Comanda -->
+        <div class="col" style="text-align: left; margin-bottom: 20px; border-top-color: var(--secondary-gold);">
+            <h2>Nova Comanda</h2>
+            <form action="/adicionar" method="POST">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>Nome do Cliente:</label>
+                        <input type="text" name="nome" required>
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Telefone:</label>
+                        <input type="text" name="telefone" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Número da Comanda:</label>
+                        <input type="text" name="numero_comanda" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Qtd. Pessoas:</label>
+                        <input type="number" name="qtd_pessoas" required min="1">
+                    </div>
+                </div>
+                <button type="submit" class="btn-add">Abrir Comanda</button>
+            </form>
+        </div>
+        
+        <!-- Barra de Pesquisa MOVIDA para baixo do formulário -->
+        <div class="search-bar">
+            <form action="/" method="GET" style="display: flex; gap: 10px;">
+                <input type="text" name="busca" placeholder="Pesquisar número da comanda..." value="{{ request.args.get('busca', '') }}">
+                <button type="submit" style="background-color: var(--primary-gold); color: white;">Buscar</button>
+                {% if request.args.get('busca') %}
+                <a href="/"><button type="button" style="background-color: #999; color: white;">Limpar</button></a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="cols" style="text-align: left;">
+            <div class="col">
+                <h2>Aguardando Couvert</h2>
+                {% for comanda in sem_couvert %}
+                <div class="item">
+                    <div class="item-info">
+                        <strong>Comanda: {{ comanda.numero_comanda }}</strong><br>
+                        Cliente: {{ comanda.nome }}<br>
+                        Pessoas: {{ comanda.qtd_pessoas }}
+                    </div>
+                    <div>
+                        <form action="/lancar_couvert/{{ comanda.id }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn-couvert" title="Lançar Couvert">$</button>
+                        </form>
+                        <form action="/fechar/{{ comanda.id }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn-close" title="Cancelar/Fechar">X</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color: #666; font-style: italic;">Nenhuma comanda pendente.</p>
+                {% endfor %}
+            </div>
+
+            <div class="col">
+                <h2>Couvert Lançado</h2>
+                {% for comanda in com_couvert %}
+                <div class="item">
+                    <div class="item-info">
+                        <strong>Comanda: {{ comanda.numero_comanda }}</strong><br>
+                        Cliente: {{ comanda.nome }}<br>
+                        Pessoas: {{ comanda.qtd_pessoas }}<br>
+                        <span class="status-ok">✓ Couvert Lançado</span>
+                    </div>
+                    <div>
+                        <form action="/fechar/{{ comanda.id }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn-close">Fechar Conta</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color: #666; font-style: italic;">Nenhuma comanda com couvert.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
